@@ -1,0 +1,127 @@
+---
+title: "Bayesian Computation with R - Chapter 1 Exercises"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+library(LearnBayes) 
+```
+
+## Question 1 - Movie DVDs owned by students
+```{r Movie DVDs owned by students, include=TRUE}
+# 1
+hist(studentdata$Dvds,main="")
+
+# 2 
+summary(studentdata$Dvds)
+
+# 3
+table(studentdata$Dvds)
+barplot(table(studentdata$Dvds))
+
+### There are clusters at numbers rounded by 10: 10,20,30. Students don't know exactly how many DVDs they have and are likely to approximate with these values.
+```
+
+## Question 2 - Student heights
+```{r Student heights, include=TRUE}
+# 1
+boxplot(studentdata$Height ~ studentdata$Gender
+        , ylab = "Height (inches)")
+
+# 2 
+output = boxplot(studentdata$Height ~ studentdata$Gender
+                 , ylab = "Height (inches)")
+output
+
+# 3
+mean(studentdata[studentdata$Gender=="male",]$Height, na.rm = TRUE) -
+  mean(studentdata[studentdata$Gender=="female",]$Height, na.rm = TRUE)
+```
+
+## Question 3 - Sleeping times
+```{r Sleeping Times, include=TRUE}
+# 1
+plot(studentdata$ToSleep, studentdata$WakeUp)
+
+
+# 2 
+fit = lm(studentdata$WakeUp ~ studentdata$ToSleep)
+
+# 3
+abline(fit)
+
+# 4
+fit
+
+# The answer is equal to the intercept of the fit: the predicted value when ToSleep = 0 (midnight). 7.9628
+
+```
+
+## Question 4 - Performance of the traditional confidence interval for a proportion
+```{r Performance of the traditional confidence interval for a proportion, include=TRUE}
+
+# 1 - added parameter to adjust confidence level, could have used 'alpha' instead of 'conf'
+binomial.conf.interval <- function(y, n, conf=.90) {
+  zconf = 1-(1-conf)/2
+  z = qnorm(zconf)
+  phat = y/n
+  se = sqrt( phat*(1-phat)/n )
+  return( c(phat-z*se, phat+z*se) )
+}
+
+# 2
+onesim <- rbinom(1,20,.5)
+onesim_ci <- binomial.conf.interval(onesim,20)
+
+sims <- rbinom(20,20,.5)
+
+# Write a function that checks to see if a confidence interval contains 0.5
+contains_parameter <- function(x, n = 20, p = 0.5, conf = 0.9) {
+  ci <- binomial.conf.interval(x,n,conf)
+  return(ifelse(p >= ci[1] & p <= ci[2],1,0))
+}
+
+# Note that the answer here will change with each random sim
+# The contains parameter function takes a simulated y value, 
+#    computes the confidence interval, and checks to see if the true P is in this interval
+
+# We apply the function to the list of simulated values, producing a list of 1s and 0s
+mean(sapply(sims,contains_parameter))
+
+
+# 3 
+
+# new sims with the lower population P
+sims <- rbinom(20,20,.05)
+
+# Reuse code above but set population p to 0.05
+mean(sapply(sims,contains_parameter,p=0.05))
+
+```
+
+
+## Question 5 - 4add
+```{r 4 additional, include=TRUE}
+
+mc_study <- function(n,p,m) {
+  sims <- rbinom(m,n,p)
+  coverage_prob <- mean(sapply(sims,contains_parameter,p=p,n=n))
+  return(coverage_prob)
+  
+}
+
+mc_study(10,.05,1000)
+mc_study(10,.25,1000)
+mc_study(10,.50,1000)
+mc_study(25,.05,1000)
+mc_study(25,.25,1000)
+mc_study(25,.50,1000)
+mc_study(100,.05,1000)
+mc_study(100,.25,1000)
+mc_study(100,.50,1000)
+mc_study(1000,.05,1000)
+
+# We see that the true coverage of P is closer to 0.9 for large values of n and for p-values closer to 0.5
+
+# This is because the central limit theorem does not hold for for smaller sample sizes
+```
