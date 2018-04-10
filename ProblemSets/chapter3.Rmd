@@ -1,0 +1,98 @@
+---
+title: "Bayesian Computation with R - Chapter 3 Exercises"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+library(LearnBayes) 
+library(ggplot2) # not part of this book
+```
+
+## Question 1 - Cauchy sampling model
+```{r q1, include=TRUE}
+
+posterior_density <- function(theta,data) {
+  return(prod( 1/(1+(data - theta)^2) ))
+}
+ys <- c(0,10,9,8,11,3,3,8,8,11)
+
+## 1
+thetas <- seq(-2,12,by=0.1)
+
+## 2
+theta_probs <- sapply(thetas,posterior_density,data=ys)
+theta_probs <- theta_probs / sum(theta_probs)
+theta_df <- cbind.data.frame(thetas,theta_probs)
+
+## 3
+ggplot(theta_df,aes(thetas,theta_probs)) + 
+  geom_col() +
+  ggtitle("Posterior Distribution of Theta") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+## We think it's highly unlikely that theta < 6, given the observed data
+## It is probably somewhere around 8-9
+
+## 4 - We'll compute these with brute force approximates from the discrete posterior
+post_mean <- sum(thetas*theta_probs)
+post_variance <-sum( theta_probs*(thetas - post_mean)^2 )
+post_sd <- sqrt(post_variance)
+c(post_mean,post_sd)
+
+```
+
+
+## Question 2 - Learning about an exponential mean
+```{r q2, include=TRUE}
+## 1
+## Just do the algebra:
+## I am confused, I get n+1 instead of n-1 when doing the transform
+
+## 2 
+ys <- c(751,594,1213,1126,819)
+theta_sims <- rgamma(1000,5,sum(ys))
+
+## 3
+lambda_sims <- 1/theta_sims
+
+## 4 
+sum(ifelse(lambda_sims > 1000,1,0))/1000
+
+## Our estimate of the probability that lambda > 1000 is the percentage of our sims where lambda > 1000
+```
+
+
+## Question 3 - Learning about the upper bound of a discrete uniform density
+```{r q3, include=TRUE}
+ys <- c(43,24,100,35,85)
+B <- 200
+Ns <- 1:B
+
+posterior <- function(N,data) {
+  return(ifelse( max(data)>N,0,1/N^length(data) ))
+}
+
+N_probs <- sapply(Ns,posterior,data = ys)
+N_probs <- N_probs / sum(N_probs)
+
+N_df <- cbind.data.frame(Ns,N_probs)
+## a
+
+ggplot(N_df,aes(Ns,N_probs)) + 
+  geom_col() +
+  ggtitle("Posterior Distribution of N") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+## b
+## We'll do the same brute force method as in Q1
+post_mean <- sum(Ns*N_probs)
+post_variance <-sum( N_probs*(Ns - post_mean)^2 )
+post_sd <- sqrt(post_variance)
+c(post_mean,post_sd)
+
+## c
+sum(N_df[N_df$Ns>=150,]$N_probs)
+
+```
