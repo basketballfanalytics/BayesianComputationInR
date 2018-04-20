@@ -249,7 +249,7 @@ sims &lt;- rbinom(20,20,.05)
 
 # Reuse code above but set population p to 0.05
 mean(sapply(sims,contains_parameter,p=0.05))</code></pre>
-<pre><code>## [1] 0.75</code></pre>
+<pre><code>## [1] 0.8</code></pre>
 </div>
 <div id="question-5---4add" class="section level2">
 <h2>Question 5 - 4add</h2>
@@ -261,25 +261,25 @@ mean(sapply(sims,contains_parameter,p=0.05))</code></pre>
 }
 
 mc_study(10,.05,1000)</code></pre>
-<pre><code>## [1] 0.392</code></pre>
+<pre><code>## [1] 0.389</code></pre>
 <pre class="r"><code>mc_study(10,.25,1000)</code></pre>
-<pre><code>## [1] 0.919</code></pre>
+<pre><code>## [1] 0.927</code></pre>
 <pre class="r"><code>mc_study(10,.50,1000)</code></pre>
-<pre><code>## [1] 0.904</code></pre>
+<pre><code>## [1] 0.875</code></pre>
 <pre class="r"><code>mc_study(25,.05,1000)</code></pre>
-<pre><code>## [1] 0.707</code></pre>
+<pre><code>## [1] 0.726</code></pre>
 <pre class="r"><code>mc_study(25,.25,1000)</code></pre>
-<pre><code>## [1] 0.877</code></pre>
+<pre><code>## [1] 0.857</code></pre>
 <pre class="r"><code>mc_study(25,.50,1000)</code></pre>
-<pre><code>## [1] 0.904</code></pre>
+<pre><code>## [1] 0.903</code></pre>
 <pre class="r"><code>mc_study(100,.05,1000)</code></pre>
-<pre><code>## [1] 0.848</code></pre>
+<pre><code>## [1] 0.843</code></pre>
 <pre class="r"><code>mc_study(100,.25,1000)</code></pre>
-<pre><code>## [1] 0.895</code></pre>
+<pre><code>## [1] 0.885</code></pre>
 <pre class="r"><code>mc_study(100,.50,1000)</code></pre>
-<pre><code>## [1] 0.929</code></pre>
+<pre><code>## [1] 0.918</code></pre>
 <pre class="r"><code>mc_study(1000,.05,1000)</code></pre>
-<pre><code>## [1] 0.905</code></pre>
+<pre><code>## [1] 0.909</code></pre>
 <pre class="r"><code># We see that the true coverage of P is closer to 0.9 for large values of n and for p-values closer to 0.5
 
 # This is because the central limit theorem does not hold for for smaller sample sizes</code></pre>

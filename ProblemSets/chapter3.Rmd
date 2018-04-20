@@ -93,6 +93,318 @@ post_sd <- sqrt(post_variance)
 c(post_mean,post_sd)
 
 ## c
-sum(N_df[N_df$Ns>=150,]$N_probs)
+sum(N_df[N_df$Ns>150,]$N_probs)
 
+## 13.9% chance that there are more than 150 taxis
+
+```
+
+
+ 
+## Question 4 - Bayesian Robustness
+### You think a coin is fair: probability of flipping heads is 0.5 
+```{r q4, include=TRUE}
+## 1
+
+a1 <- 100; b1 <- 100
+a21 <- 500; b21 <- 500
+a22 <- 1; b22 <- 1
+p1_par <- c(a1,b1)
+p2_par1 <- c(a21,b21)
+p2_par2 <- c(a22,b22)
+mix_par <- rbind(p2_par1,p2_par2)
+
+p1_sims <- rbeta(1000,a1,b1)
+
+ci <- c(0.05,0.95)
+quantile(p1_sims,ci)
+qbeta(ci,a1,b1)
+
+## Our similated data has a 90% confidence interval approx. on .44,.56 as expected
+## We can compute this explicitly for the beta(100,100) distribution as well
+
+## Write function to sample from mixture distribution
+## there might be an easier way to do this
+## could generalize this to simulate from any distribution
+rbetamix <- function(n,alphas,betas,probs) {
+  ## function can take any number of beta distributions
+  num_dists <- length(probs)
+  
+  ## randomly choose which parameters to use during simulation
+  selections <- sample(1:num_dists,prob=probs,size=n,replace=TRUE)
+  return(rbeta(n,alphas[selections],betas[selections]))
+  
+}
+
+probs <- c(.9,.1)
+
+p2_sims <- rbetamix(10000,c(a21,a22),c(b21,b22),probs)
+quantile(p2_sims,ci)
+
+alt_sims <- c(rbeta(9000,500,500),rbeta(1000,1,1))
+quantile(alt_sims,ci)
+
+## This second set of sims seems to not quite fit the prior belief
+## the 90% CI seems to cover 46% - 54%
+## The alternative method to simulate from the mixture shows the same
+
+
+
+## 2
+n <- 100; y <- 45
+data <- c(y,n-y)
+
+post1_sims <- rbeta(1000,a1+y,b1+n-y)
+quantile(post1_sims,ci)
+
+betapar <- rbind(p2_par1,p2_par2)
+post2 <- binomial.beta.mix(probs,betapar,data)
+post2_sims <- rbetamix(10000,post2$betapar[,1],post2$betapar[,2],post2$probs)
+quantile(post2_sims,ci)
+
+## The intervals for the given priors are respectively:
+## .433,.531
+## .468,.521
+
+## Prior2 gives a tighter interval
+## Something seems suspect here, perhaps I am doing the mixture wrong
+## Our prior 90% Ci lower bound for prior 2 was 46%
+##  We observed 45%, but our posterior lower bound has increased
+
+
+## 3
+n <- 100; y <- 30
+data <- c(y,n-y)
+
+post1_sims <- rbeta(1000,a1+y,b1+n-y)
+quantile(post1_sims,ci)
+
+betapar <- rbind(p2_par1,p2_par2)
+post2 <- binomial.beta.mix(probs,betapar,data)
+post2_sims <- rbetamix(10000,post2$betapar[,1],post2$betapar[,2],post2$probs)
+quantile(post2_sims,ci)
+
+## 4
+## Our second prior resulting in a dramatic reaction to the unexpected 30/100 data point
+## With the first prior, we are only slightly suspicious that the coin is unfair
+## With the second prior, we are certain the coin is unfair
+## Our decision is dependent on our choice of prior
+
+```
+
+
+## Question 5 - Test of a proportion
+```{r q5, include=TRUE}
+## 1
+n <- 20; y <- 8
+dbinom(8,20,.2)
+## There is a 2.2% chance of observing exactly 8 correct guesses in 20 tries if the person does not have ESP
+## But the p-value is a little bit different
+##   It is the probabilty of observing a value AT LEAST this extreme
+##   So we need to include the probabilities of more extreme values
+##   We sum the probabilities of 8 or any larger value of correct guesses
+##   Usually we would multiply by 2 to include the lower tail, but...
+##   we will not do that here due to the context of the problem
+##   People with ESP are restricted to the higher tail
+##   Someone whose p-value is likely less than .2 definitely does NOT have ESP
+
+sum(dbinom(8:20,20,.2))
+
+## The p-value of 0.03 < 0.05 suggests this person has ESP per standard statistics
+
+
+## 2
+p <- 0.2
+probs <- c(p,1-p)
+a <- 1; b <- 4; beta_par <- c(a,b)
+
+## We are saying it's 50/50 if someone does not have ESP or
+##   they have some level of ESP given by the beta distribution
+pbetat(p,.5,beta_par,c(y,n-y))
+
+## The pvalue here is .277, bayesian inference is less convinced of ESP than traditional methods
+
+## 3
+## a quick function to plot beta priors
+ggbetaprior <- function(pars,probs) {
+  vals <- dbeta(probs,pars[1],pars[2])
+  vals <- vals / sum(vals)
+  plot_df <- cbind.data.frame(probs,vals)
+  return(
+      ggplot(plot_df,aes(probs,vals)) + 
+          geom_col() +
+          ggtitle(paste("Prior distribution for Beta with params alpha: ", pars[1]," and beta: ", pars[2])) +
+          theme_classic() +
+          scale_y_continuous(labels = scales::percent)
+  )
+}
+
+ps <- seq(0.01,1,by = 0.01)
+par1 <- c(.5,2)
+pbetat(p,.5,par1,c(y,n-y))
+ggbetaprior(par1,ps)
+par2 <- c(2,8)
+pbetat(p,.5,par2,c(y,n-y))
+ggbetaprior(par2,ps)
+par3 <- c(8,32)
+pbetat(p,.5,par3,c(y,n-y))
+ggbetaprior(par3,ps)
+
+## 4
+## Our conclusion that the person does not have ESP is indifferent to the prior selection (among the given choices)
+## This exercise is a good example of the Bayes philosophpy in general. Traditional statistics limits us to believing what we see. 
+## If a person scores 8/20, then our best guess according to traditional statistics is that this person guesses 40%, we then ask if this sufficiently far from 20% for us to conclude this person has ESP
+## In the Bayesian framework, we allow ourselves to believe, a priori, that ESP doesn't exist. We need to see stronger evidence against this hypothesis to change our mind. The strenght of evidence required depends on our selection of prior distribution
+
+```
+
+
+## Question 6 - Learning from grouped data
+```{r q6, include=TRUE}
+## I'm confused: what is the definition of a 'flat prior'? This sounds like a
+## uniform prior, but Mu has infinite range I'll try to estimate all this with
+## discrete math see below, the flat prior selection seems to be equivalent to a constant prior or no prior at all
+
+mus <- 30:110
+likelihood <- function(mu,sigma,s,f) {
+  return( (pnorm(70,mu,sigma)^s)*(1-pnorm(70,mu,sigma))^f  )
+}
+
+## Note that I am multiplying by the prior density 1/80
+##  In fact, this calculation makes no difference because it is a constant
+##    and I divide it out in the next line
+post_vals <- (1/80) * likelihood(mus,10,1,17)
+post <- post_vals / sum(post_vals)
+plot_df <- cbind.data.frame(mus,post)
+
+ggplot(plot_df,aes(mus,post)) + 
+  geom_col() +
+  ggtitle("Posterior Distribution for average highway speed Mu") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+
+## The posterior mean can be approximated by the discrete distribution
+sum(mus*post)
+
+## The posterior mean of ~87 mph is our point estimate for the average highway speed
+
+## 3
+sum(plot_df[plot_df$mus>=80,]$post)
+
+## There is a 94% chance the average speed is higher than 80
+```
+
+
+## Question 7 - Learning about a mortality rate using a mixture prior
+```{r q7, include=TRUE}
+g1_par <- c(1.5,1000)
+g2_par <- c(7,1000)
+probs <- c (.5,.5)
+
+dgamma_mix <- function(x,g1_par1,g1_par2,probs) {
+  return(probs[1] * dgamma(x,g1_par[1],g1_par[2]) + probs[2] * dgamma(x,g2_par[1],g2_par[2]))
+}
+
+## 1
+curve(dgamma_mix(x,g1_par,g2_par,c(.5,.5)),0.0001,0.02)
+
+## 2
+y <- c(4)
+e <- c(1767)
+s <- e-y
+gammapar <- rbind(g1_par,g2_par)
+post <- poisson.gamma.mix(c(.5,.5),gammapar,list(y=y,t=e))
+lambdas <- seq(0.0001,0.0200,by = 0.0001)
+
+prior_densities <- dgamma_mix(lambdas,g1_par,g2_par,c(.5,.5))
+prior_densities <- prior_densities / sum(prior_densities)
+priors <- cbind.data.frame(lambdas,prior_densities,"prior")
+names(priors) <- c("lambdas","density","distribution")
+
+post_densities <- dgamma_mix(lambdas,post$gammapar[1,],post$gammapar[2,],post$probs)
+post_densities <- post_densities / sum(post_densities)
+posts <- cbind.data.frame(lambdas,post_densities,"posterior")
+names(posts) <- c("lambdas","density","distribution")
+
+plot_df <- rbind.data.frame(priors,posts)
+
+
+curve(dgamma_mix(x,post$gammapar[1,],post$gammapar[2,],post$probs),0.0001,0.02)
+
+## gonna do the plots in ggplot
+
+ggplot(plot_df,aes(x=lambdas,y=density,color=distribution)) +
+  geom_line() +
+  ggtitle("Prior and Posterior Distributions for Mixture of Gammas") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+## 4
+
+## I am confused by the distribution functions here
+## I think the two calculations below should return approximately the same answer, they do not
+l <- 0.005
+sum(posts[posts$lambdas>=0.005,]$density)
+1 - (post$probs[1] * pgamma(l,post$gammapar[1,1],post$gammapar[1,2]) +
+     post$probs[2] * pgamma(l,post$gammapar[2,1],post$gammapar[2,2]))
+
+## the two curves below should be the same, but are not... #confused
+curve(.76*dgamma(x,5.5,2767) + .24*dgamma(x,11,2767),xlim=c(0,.02))
+curve(dgamma_mix(x,post$gammapar[1,],post$gammapar[2,],post$probs),0.0001,0.02)
+      
+
+
+## 5
+## We put more weight in the first person's prior
+```
+
+
+## Question 8 - Learning about an exponential mean based on selected data
+```{r q8, include=TRUE}
+
+ys <- c(751,594,1213,1126,819)
+theta_sims <- rgamma(1000,5,sum(ys))
+
+## 3
+lambda_sims <- 1/theta_sims
+
+## 4 
+sum(ifelse(lambda_sims > 1000,1,0))/1000
+
+n_lightbulbs <- 12
+y4 <- 100
+y8 <- 300
+like <- function(lambda) {
+  return( pexp(100,1/lambda) ^ 3 * dexp(1-.1/lambda) * (pexp(300,1/lambda)-pexp(100,1/lambda))^3 * dexp(300,1/lambda)*(1-pexp(300,1/lambda))^4)
+}
+
+prior <- function(lambda) {
+  return(1/lambda)
+}
+
+posterior <- function (lambda) {
+  return(prior(lambda) * like(lambda))
+}
+
+lambdas <- 1:2000
+posts <- posterior(lambdas) / sum(posterior(lambdas))
+plot_df <- cbind.data.frame(lambdas,posts)
+
+
+## 1
+ggplot(plot_df,aes(lambdas,posts)) + 
+  geom_col() +
+  ggtitle("Posterior Distribution for lambda") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+## 2
+post_mean <- sum(lambdas*posts)
+post_sd <- sqrt( sum(posts*(lambdas-post_mean)^2)   )
+
+## 3
+sum(plot_df[plot_df$lambdas >= 300 & plot_df$lambdas <= 500,]$posts)
+
+## There's a 44% chance that lambda is between 300 and 500
 ```
