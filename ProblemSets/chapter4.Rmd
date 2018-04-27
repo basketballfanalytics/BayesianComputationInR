@@ -292,6 +292,13 @@ length(lambda1s[lambda1s>=1.5*lambda2s]) / length(lambda1s)
 ## Question 7 - Fitting a gamma density
 ```{r q7, include=TRUE}
 
+# I am lost on this question
+# I think that:
+# The Gamma distribution has two equivalent forms:
+#   1) Scale form: expressed here with parameters alpha, lambda
+#   2) Rate form: used exclusively throughout this book (prior to this question) with parameters alpha, beta = 1 / lambda
+# The densities look similar and I assume can be proven to be mathematically equivalent
+
 gamma_sampling_post <- function(theta,y) {
   sum(dgamma(y,shape=theta[1],scale=theta[2],log=TRUE))
 }
@@ -306,6 +313,28 @@ sims <- simcontour(gamma_sampling_post,grid,ys,1000)
 points(sims$x,sims$y)
 
 ## 2
+# How I think the jacobian part works here
+# If theta = (alpha,lambda) and theta1 = (alpha,beta)
+#   then theta1 is a 2d transformation of theta given by h(theta[alpha,lambda]) = theta1[alpha=alpha,beta=1/lambda]
+#     and the inverse of h is h-1(theta1[alpha,beta]) = theta[alpha=alpha,lambda=1/beta]
+# per Wikipedia: https://en.wikipedia.org/wiki/Integration_by_substitution#Application_in_probability
+
+# Based on the above, the function to compute the posterior of theta1={alpha,beta}
+#   should be given by g(h-1(theta1)) * |Jacobian Determinant of h-1(theta1)|
+
+# The jacobian matrix of h1 is
+#   ( 1, 0
+#     0, 1/beta^2)
+
+# and the jacobian term is -1/beta^2
+
+# I'm confused because the jacobian doesnt make sense
+#   If i simply substitute 1/beta for lambda in the density function given for scale form, then I obtain the rate form
+# Multiplying by |-1/beta^2| results in an extra term
+
+
+
+
 mus <- sims$x*sims$y
 qs <- c(0.05,0.95)
 quantile(mus,qs)
