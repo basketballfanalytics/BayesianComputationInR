@@ -1,0 +1,278 @@
+---
+title: "Bayesian Computation with R - Chapter 2 Exercises"
+output: html_document
+---
+
+
+```{r setup, include=TRUE}
+library(LearnBayes) 
+library(ggplot2) # not part of this book
+```
+
+## Question 1 - Estimating a proportion with a discrete prior
+```{r q1, include=TRUE}
+p <- seq(0,1,by = 0.125)
+prior <- c(.001,.001,.95,.008,.008,.008,.008,.008,.008)
+prior_data <- as.data.frame(cbind(p,prior))
+ggplot(prior_data,aes(p,prior)) + 
+  geom_col() +
+  ggtitle("Prior Distribution") +
+  theme_minimal()
+
+data <- c(6,4)
+post <- pdisc(p,prior,data)
+post_data <- as.data.frame(cbind(p,post))
+ggplot(post_data,aes(p,post)) + 
+  geom_col() +
+  ggtitle("Post Distribution") +
+  theme_minimal()
+
+post_data
+
+# After the study, we think there is a ~73% chance that Bob does not have ESP,
+#   or that his true probability of guessing a card correctly is .25
+```
+
+
+## Question 2 - Estimating a proportion with a histogram prior
+```{r q2, include=TRUE}
+midpt <- seq(0.05,0.95, by = .1)
+prior <- c(1,4,20,40,100,100,20,1,1,1)
+prior <- prior/sum(prior)
+p <- seq(0,1,length = 500)
+prior <- histprior(p,midpt,prior)
+prior_data <- as.data.frame(cbind(p,prior))
+ggplot(prior_data,aes(p,prior)) + 
+  geom_col() +
+  ggtitle("Prior Histogram Distribution") +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent)
+
+y <- rbinom(1,20,.5)
+
+likelihood <- (p ^ y) * ((1-p)^(20-y))
+post <- prior * likelihood / sum(prior * likelihood)
+post_data <- as.data.frame(cbind(p,post))
+
+ggplot(post_data,aes(p,post)) + 
+  geom_col() +
+  ggtitle("Posterior Histogram Distribution") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent)
+
+ps <- sample(p, replace = TRUE, prob = post)
+sim_data <- as.data.frame(cbind(p,ps))
+ggplot(sim_data,aes(ps)) + 
+  geom_histogram(binwidth=.025,aes(y=..count../sum(..count..))) +
+  ggtitle("Posterior Histogram Distribution") +
+  theme_classic() +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent) +
+  ylab("Sampled frequency")
+
+```
+
+## Question 3 - Estimating a proportion and prediction of a future sample
+```{r q3, include=TRUE}
+# 1
+ci <- qbeta(c(0.05,0.95),23,8)
+ci
+
+# 2
+1 - pbeta(.6,23,8)
+
+# 3
+# 1000 samples of p from posterior
+sample <- rbeta(1000,23,8)
+
+# 4
+ys <- c(9,10)
+pred <- pbetap(c(23,8), 10, ys)
+sum(pred)
+# This should be the answer per the chapter text using pbetap. 
+# The Question suggests to use rbinom instead, which we do below. 
+# For each randomly generated p from part 3, 
+# use rbinom to randomly generate a y value (with n=10),
+# then calculate the % of these ys >= 9
+
+ys <- sapply(sample, rbinom, n = 1, size = 10)
+mean(ys>=9)
+
+# In this run I get 26.6% using the pbetap method 
+#   and 28.4% using the simulation method with rbinom
+```
+
+## Question 4 - Contrasting predictions using two different priors
+```{r q4, include=TRUE}
+p <- c(0.1,0.2,0.3,0.4,0.5)
+prior <- c(0.5,0.2,0.2,0.05,0.05)
+joe_prior_data <- as.data.frame(cbind(p,prior))
+
+ggplot(joe_prior_data,aes(p,prior)) + 
+  geom_col() +
+  ggtitle("Joe's Discrete Prior") +
+  theme_classic() +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent)
+
+sam_p <- seq(0,1,by = .01)
+sam_prior <- dbeta(sam_p,3,12)
+sam_prior <- sam_prior / sum(sam_prior)
+sam_prior_data <- as.data.frame(cbind(sam_p,sam_prior))
+
+ggplot(sam_prior_data,aes(sam_p,sam_prior)) + 
+  geom_col() +
+  ggtitle("Sam's Beta Prior (approx.)") +
+  theme_classic() +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::percent)
+
+# Joe's mean and SD
+joe_mean <- weighted.mean(p,prior)
+joe_sd <- sqrt(  sum(  prior*(p - joe_mean)^2  )  )
+joe_mean
+joe_sd
+
+# Sam's mean and SD
+a <- 3
+b <- 12
+sam_mean <- a / (a+b)
+sam_sd <- sqrt(  a*b / (((a+b)^2)*(a+b+1))  )
+sam_mean
+sam_sd
+
+# The means and standard deviations of joe's prior and sam's prior are similar
+
+
+# 2
+ys <- seq(0,12)
+name <- rep("Joe",13)
+pred <- pdiscp(p,prior,12,ys)
+joe_pred_data <- cbind.data.frame(name,ys,pred)
+name <- rep("Sam",13)
+pred <- pbetap(c(3,12),12,ys)
+sam_pred_data <- cbind.data.frame(name,ys,pred)
+plot_data <- rbind.data.frame(joe_pred_data,sam_pred_data)
+
+
+ggplot(plot_data,aes(x=ys,y=pred,fill=name)) + 
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("Predictive Distributions") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+# Joe's predictions have more probability weight in 0 and 1, 
+#   otherwise the predictions are similar
+
+```
+
+
+## Question 5 - Estimating a normal mean with a discrete prior
+```{r q5, include=TRUE}
+## Estimate Mu = the average annual snowfall in (Boston)
+## Assume observed annual snowfalls y1, ..., yn are ~Normal(Mu,sigma = 10)
+
+## 1
+mu <- c(20,30,40,50,60,70)
+prior <- c(.1,.15,.25,.25,.15,.1)
+
+## 2
+y <- c(38.6, 42.4, 57.5, 40.5, 51.7, 67.1, 33.4, 60.9, 64.1, 40.1, 40.7, 6.4)
+ybar <- mean(y)
+n <- length(y)
+sigma <- 10
+
+## 3
+likelihood <- function(ybar,mu,sigma,n) {
+  return(exp( -n * ((mu - ybar)^2) / (2 * sigma^2) ))
+}
+
+like <- likelihood(ybar,mu,sigma,n)
+plot_data <- cbind.data.frame(mu,like)
+
+ggplot(plot_data,aes(x=mu,y=like)) + 
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("Likelihoods of Mu, given observed ybar") +
+  theme_classic()
+
+## 4 
+post <- prior*like / sum(prior*like)
+
+plot_data <- cbind.data.frame(mu,post)
+ggplot(plot_data,aes(x=mu,y=post)) + 
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("Posterior Distibution for Mu, given observed ybar") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+## 5
+
+prob_int <- discint(cbind(mu,post),.8)
+prob_int
+
+## Notice that the likelihood plot shows that it's basically impossible for Mu to be anything other than 40 or 50, given ybar
+
+## The posterior plot simply scales the likelihood plot to sum to 100%
+
+## And the probability interval is very close to 1, showing our posterior belief that Mu cannot be outside 40 or 50. 
+
+```
+
+## Question 6 - Estimating a possion mean using a discrete prior
+```{r q6, include=TRUE}
+## You own a trucking company and a fleet of trucks, you're insterested in modeling the number of breakdowns during a time period of t days
+
+## You assume the # of breakdowns in t days to have Poisson distribution with unknown lambda, and mean t * lambda
+
+## First let's record the givens
+
+## possible values for lambda
+lambda <- c(.5, 1, 1.5, 2, 2.5, 3)
+prior <- c(.1, .2, .3, .2, .15, .05)
+
+likelihood <- function(lambda,t,y) {
+  return( exp(-t * lambda)*(t*lambda)^y )
+}
+
+## Part 1
+t <- 6
+y <- 12
+
+like <- likelihood(lambda,t,y)
+plot_df <- cbind.data.frame(lambda,like)
+
+ggplot(plot_df,aes(x=lambda,y=like)) + 
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("Likelihoods of Lambda, given observed y") +
+  theme_classic()
+
+
+post <- like * prior / sum(like*prior)
+plot_df <- cbind.data.frame(post,like)
+
+ggplot(plot_df,aes(x=lambda,y=post)) + 
+  geom_bar(stat="identity",position="dodge") +
+  ggtitle("Posterior Distribution of Lambda, given prior and observed y") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::percent)
+
+
+
+
+## 2 - Find the probability that there are no breakdowns next week
+
+## For a given value of lambda, the probability of 0 breakdowns in the next week is the given by the likelihood function computed at t = 7, y = 0, lambda = lambda
+
+## We don't know what lambda is, but we have probability estimates for it at discrete values. We can compute the general probability that y = 0 by calculating this probability for each possible value of lambda and then taking the sum, weighted by posterior probability distribution
+
+cond_prob <- likelihood(t = 7, y = 0, lambda = lambda)
+sum(cond_prob*post)
+
+## There is basically no chance that there will be 0 breakdowns in the next week
+## The mean breakdowns is t * lambda, even if lambda 7, this mean would b 3.5
+## Also not that our posterior probability that lambda = 0.5 is ~0, because we observed y = 12
+## So the mean (t * lambda) is at least 7 (if lambda =1), so it makes sense that y has so little chance to be 0
+
+```
